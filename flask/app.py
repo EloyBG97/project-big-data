@@ -47,33 +47,29 @@ def get_messages_test():
     m = get_empty_map()
     update_map(m)
 
-    # Si usamos esto, el mapa parpadea mucho porque estamos actualizandolo cada vez que llega el dato
-    # de un autobus (llegan todos seguidos)
-    for event in consumer:
-        item = event.value
-        m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']}")
-        update_map(m)
-    need_clean = False
+    timestamp = None
+
     # Poll permite obtener los datos recibidos en los ultimos x segundos
     while True:
-        seconds = 3
+        seconds = 5
         records = consumer.poll(seconds * 1000)
 
         if records != {}:
             record_list = []
-            if need_clean:
-                m = get_empty_map()
-                need_clean = False
+
             for tp, consumer_records in records.items():
                 for consumer_record in consumer_records:
+                    print(consumer_record.value)
                     record_list.append(consumer_record.value)
 
             for item in record_list:
+                if timestamp != item['timestamp']:
+                    timestamp = item['timestamp']
+                    m = get_empty_map()
                 m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']}")
 
             update_map(m)
         else:
-            need_clean = True
             time.sleep(seconds)
 
 

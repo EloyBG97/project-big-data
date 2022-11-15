@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType
-from pyspark.sql.functions import expr
+from pyspark.sql.functions import expr, lit, element_at, split, input_file_name
 
 scala_version = '2.12'
 spark_version = '3.2.2'
@@ -34,7 +34,9 @@ def main(directory) -> None:
         .format("csv") \
         .options(header='true') \
         .schema(StructType(fields)) \
-        .load(directory)
+        .load(directory) \
+        .withColumn("filename", element_at(split(input_file_name(), "/"), -1)) \
+        .withColumn("timestamp", element_at(split("filename", ".txt"), 1))
 
     # lines.printSchema()
 
