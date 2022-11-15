@@ -84,5 +84,24 @@ def inicio():
     )
 
 
+@app.route('/filter', methods = ["GET"])
+def filter():
+    # [ELOY] TODO: Desarrollar recurso /filter.
+    # Conectar con Kafka
+    # Filtrar el contenido de Kafka de acuerdo a los parametros recibidos
+    # Mostrar la información obtenida en el mapa
+
+    linea = request.args.get('linea', 1)
+    sentido = request.args.get('sentido', 1)
+    last_time = request.args.get('last-time')
+
+    print(f"{linea} {sentido} {last_time}")
+    m = folium.Map(location=[36.7201600, -4.4203400], zoom_start=13)
+    return render_template(
+        "index.html",
+        map=m._repr_html_()
+    )
+
+
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')
