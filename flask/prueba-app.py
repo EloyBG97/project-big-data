@@ -7,7 +7,7 @@ from kafka import KafkaConsumer
 
 import threading
 
-TOPIC_TEST = "topic_test"
+TOPIC = "topic_test"
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -35,7 +35,7 @@ def add_marker(m, location, text):
     return m
 
 
-def get_messages_test():
+def get_messages():
     consumer = KafkaConsumer(
         bootstrap_servers=['localhost:9092'],
         auto_offset_reset='earliest',
@@ -43,29 +43,24 @@ def get_messages_test():
         group_id='my-group-id',
         value_deserializer=lambda x: loads(x.decode('utf-8'))
     )
-    consumer.subscribe(topics=[TOPIC_TEST])
+    consumer.subscribe(topics=[TOPIC])
     m = get_empty_map()
     update_map(m)
 
-    timestamp = None
 
-    # Poll permite obtener los datos recibidos en los ultimos x segundos
+
     while True:
-        seconds = 5
+        seconds = 3  # Es necesario usar poll para evitar que el mapa parpadee
         records = consumer.poll(seconds * 1000)
 
         if records != {}:
             record_list = []
-
+            m = get_empty_map()
             for tp, consumer_records in records.items():
                 for consumer_record in consumer_records:
-                    print(consumer_record.value)
                     record_list.append(consumer_record.value)
 
             for item in record_list:
-                if timestamp != item['timestamp']:
-                    timestamp = item['timestamp']
-                    m = get_empty_map()
                 m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']}")
 
             update_map(m)
@@ -75,31 +70,12 @@ def get_messages_test():
 
 @app.route('/')
 def inicio():
-    thread = threading.Thread(target=get_messages_test)
+    thread = threading.Thread(target=get_messages)
     thread.daemon = True
     thread.start()
 
     return render_template(
         "index.html"
-    )
-
-
-@app.route('/filter', methods = ["GET"])
-def filter():
-    # [ELOY] TODO: Desarrollar recurso /filter.
-    # Conectar con Kafka
-    # Filtrar el contenido de Kafka de acuerdo a los parametros recibidos
-    # Mostrar la información obtenida en el mapa
-
-    linea = request.args.get('linea', 1)
-    sentido = request.args.get('sentido', 1)
-    last_time = request.args.get('last-time')
-
-    print(f"{linea} {sentido} {last_time}")
-    m = folium.Map(location=[36.7201600, -4.4203400], zoom_start=13)
-    return render_template(
-        "index.html",
-        map=m._repr_html_()
     )
 
 

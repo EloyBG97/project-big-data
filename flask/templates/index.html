@@ -37,21 +37,12 @@
         </div>
 
         <div class="row">
-            <div class="col-6">
+            <div class="col">
                 <h2>Mapa</h2>
-            </div>
-            <div class="col-6">
-                <div class="float-right">
-                    <form method="post" action="/refresh">
-                        <p><input class="btn btn-primary" type="submit" value="Actualizar Datos"/></p>
-                    </form>
-                </div>
             </div>
         </div>
         <div class="row">
-            <div class="col">
-                {{ map | safe }}
-            </div>
+            <div id="mapa" class="col"></div>
         </div>
 
     </div>
