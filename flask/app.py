@@ -1,9 +1,9 @@
-import time
 from json import loads
 from flask_socketio import SocketIO
 from flask import Flask, render_template
 import folium
 from kafka import KafkaConsumer
+import requests
 
 import threading
 
@@ -11,6 +11,7 @@ TOPIC_TEST = "topic_test"
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
+thread = None
 
 
 @socketio.on('connect', namespace='/test')
@@ -35,7 +36,8 @@ def add_marker(m, location, text):
     return m
 
 
-def get_messages_test():
+def get_messages_test(arg):
+    print('Iniciado Thread')
     consumer = KafkaConsumer(
         bootstrap_servers=['localhost:9092'],
         auto_offset_reset='earliest',
@@ -50,7 +52,8 @@ def get_messages_test():
     timestamp = None
 
     # Poll permite obtener los datos recibidos en los ultimos x segundos
-    while True:
+    t = threading.current_thread()
+    while getattr(t, "do_run", True):
         seconds = 5
         records = consumer.poll(seconds * 1000)
 
@@ -69,13 +72,18 @@ def get_messages_test():
                 m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']}")
 
             update_map(m)
-        else:
-            time.sleep(seconds)
+
+    print('Parado Thread')
 
 
 @app.route('/')
 def inicio():
-    thread = threading.Thread(target=get_messages_test)
+    global thread
+    if thread is not None:
+        thread.do_run = False
+        thread.join()
+
+    thread = threading.Thread(target=get_messages_test, args=("task",))
     thread.daemon = True
     thread.start()
 
@@ -84,16 +92,16 @@ def inicio():
     )
 
 
-@app.route('/filter', methods = ["GET"])
+@app.route('/filter', methods=["GET"])
 def filter():
     # [ELOY] TODO: Desarrollar recurso /filter.
     # Conectar con Kafka
     # Filtrar el contenido de Kafka de acuerdo a los parametros recibidos
     # Mostrar la información obtenida en el mapa
 
-    linea = request.args.get('linea', 1)
-    sentido = request.args.get('sentido', 1)
-    last_time = request.args.get('last-time')
+    linea = requests.args.get('linea', 1)
+    sentido = requests.args.get('sentido', 1)
+    last_time = requests.args.get('last-time')
 
     print(f"{linea} {sentido} {last_time}")
     m = folium.Map(location=[36.7201600, -4.4203400], zoom_start=13)
