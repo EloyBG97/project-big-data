@@ -1,11 +1,7 @@
-from pyspark.sql import SparkSession, functions
+from pyspark.sql import SparkSession
 import sys
-from pyspark.sql.functions import explode
-from pyspark.sql.functions import split
 from pyspark.sql.types import *
-import time
-import urllib.request
-import json
+
 
 
 def main() -> None:
@@ -26,12 +22,12 @@ def main() -> None:
     logger.LogManager.getLogger("org").setLevel(logger.Level.WARN)
 
     fields = [StructField("codBus", IntegerType(), True),
-              StructField("long", DoubleType(), True),
-              StructField("last_update", TimestampType(), True),
-              StructField("lat", DoubleType(), True),
               StructField("codLinea", IntegerType(), True),
               StructField("sentido", IntegerType(), True),
-              StructField("codParIni", IntegerType(), True)
+              StructField("long", DoubleType(), True),
+              StructField("lat", DoubleType(), True),
+              StructField("codParIni", IntegerType(), True),
+              StructField("last_update", TimestampType(), True)
               ]
 
     # Create DataFrame representing the stream of input lines from connection to localhost:9999
@@ -43,14 +39,10 @@ def main() -> None:
         .load(directory)
 
     lines.printSchema()
-'''
+
     # Mostrar los 3 campos
     listValues = ["None", "-1"]
-    values = lines.select("nombre","capacidad","libres")\
-        .filter(lines.libres != -1)\
-        .filter(lines.capacidad != -1)\
-        .filter(lines.libres != "None")\
-        .filter(lines.capacidad != "None")
+    values = lines.select("long","last_update","lat","codParIni")
 
     query = values \
         .writeStream \
@@ -60,9 +52,17 @@ def main() -> None:
 
     query.awaitTermination()
 '''
+\
+        .filter(lines.libres != -1)\
+        .filter(lines.capacidad != -1)\
+        .filter(lines.libres != "None")\
+        .filter(lines.capacidad != "None")
+'''
+
+
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 1:
         print("Revise el programa. Algo no ha salido correctamente. ", file=sys.stderr)
         exit(-1)
     main()
