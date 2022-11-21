@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <h1>Autobuses Málaga</h1>
+
+        {#        <div class="row">#}
+        {#            <div class="col">#}
+        {#                <h2 class="display-6">FILTROS</h2>#}
+        {##}
+        {#		<form method="get" action="/filter">#}
+        {#                    <div class="row">#}
+        {#		        <!-- [ELOY] TODO: Lista desplegable con los nombres de las lineas -->#}
+        {#			<div class="col">#}
+        {#                            <input class"form-control" type="text" placeholder="Lina de Autubus" name="linea"/>#}
+        {#			</div>    #}
+        {#                        <div class="col">#}
+        {#	  	            <div class="form-check">#}
+        {#                                <input class="form-check-input" type="radio" name="sentido" value="1" id="btn-sentido-1">#}
+        {#                                <label for="btn-sentido-1" class="form-check-label">Sentido 1</label>    #}
+        {#			    </div>#}
+        {#                            <div class="form-check">#}
+        {#                                <input class="form-check-input" type="radio" name="sentido" value="2" id="btn-sentido-2">                                   #}
+        {#                                <label for="btn-sentido-2" class="form-check-label">Sentido 2</label>#}
+        {#                            </div>#}
+        {#                        </div>#}
+        {#			<div class="form-floating col-xs-4 col-md-8">#}
+        {#			    <!-- [ELOY] TODO: Corregir color del slider (a primary) y poner el label por encima. --> #}
+        {#			    <label for="time-filter" class="form-label">En los X últimos minutos: </label>#}
+        {#			    <input type="range" class="form-range" min="0" max="60" name="last-time" id="time-filter">#}
+        {#			</div>#}
+        {#		    </div>#}
+        {#		    <input type="submit" class="btn btn-primary" value="Aplicar"/>#}
+        {#		</form>#}
+        {#		<hr>#}
+        {#            </div>#}
+        {#        </div>#}
+
+        <div class="row">
+            <div class="col">
+                <h2>Mapa</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div id="mapa" class="col"></div>
+        </div>
+
+    </div>
+{% endblock %}
