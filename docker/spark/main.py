@@ -1,7 +1,8 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType
-from pyspark.sql.functions import expr, element_at, split, input_file_name
+from pyspark.sql.types import StructType, StructField, StringType, TimestampType
+from pyspark.sql.functions import expr, element_at, split, input_file_name, current_timestamp, minute
 import os
+import json
 
 scala_version = '2.12'
 spark_version = '3.2.2'
@@ -14,8 +15,10 @@ kafka_route = os.environ.get('kafkaRoute')
 print("KAFKA ROUTE:")
 print(kafka_route)
 
-
 def main(directory) -> None:
+    with open("config.json", 'r') as f:
+        filters = json.load(f)
+
     spark = SparkSession \
         .builder \
         .master("local[4]") \
@@ -30,7 +33,7 @@ def main(directory) -> None:
         StructField("lon", StringType(), True),
         StructField("lat", StringType(), True),
         StructField("codParIni", StringType(), True),
-        StructField("last_update", StringType(), True)
+        StructField("last_update", TimestampType(), True)
     ]
 
     # Create DataFrame representing the stream of input lines from connection to localhost:9999
@@ -60,11 +63,25 @@ def main(directory) -> None:
         .option("kafka.bootstrap.servers", kafka_route) \
         .option("topic", "topic_test") \
         .start()
-    # query = values \
-    #     .writeStream \
-    #     .outputMode("update") \
-    #     .format("console") \
-    #     .start()
+
+    # Filtering Query
+    filter_2 = filters["2"]
+    query_aux = values
+    
+    if("codLinea" in filter_2.keys()):
+        query_aux = query_aux.filter(values["codLinea"] == filter_2["codLinea"])
+
+    if("sentido" in filter_2.keys()):
+        query_aux = query_aux.filter(values["sentido"] == filter_2["sentido"])
+
+    if("last_update" in filter_2.keys()): 
+        query_aux = query_aux.filter(minute(current_timestamp()) - minute(values["last_update"]) < filter_2["last_update"])      
+
+    query = query_aux \
+        .writeStream \
+        .outputMode("update") \
+        .format("console") \
+        .start()
 
     spark.streams.awaitAnyTermination()
 

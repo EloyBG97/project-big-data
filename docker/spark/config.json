@@ -1,4 +1,10 @@
 {
+ "2": {
+   "codLinea": "1.0",
+   "sentido": "1",
+   "last_update": 10
+ },
+
  "5": {
    "paradaInicio": 700,
    "paradaFin": 800
