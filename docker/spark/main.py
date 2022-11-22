@@ -53,6 +53,7 @@ def main(directory) -> None:
     # values.printSchema()
 
     # Start running the query that prints the output in the screen
+       
     query = values \
         .withColumn("id", expr("uuid()")) \
         .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
@@ -63,10 +64,11 @@ def main(directory) -> None:
         .option("kafka.bootstrap.servers", kafka_route) \
         .option("topic", "topic_test") \
         .start()
+    
 
-    # Filtering Query
+    # Filtering Query    
     filter_2 = filters["2"]
-    query_aux = values
+    query_aux = lines
     
     if("codLinea" in filter_2.keys()):
         query_aux = query_aux.filter(values["codLinea"] == filter_2["codLinea"])
@@ -77,11 +79,25 @@ def main(directory) -> None:
     if("last_update" in filter_2.keys()): 
         query_aux = query_aux.filter(minute(current_timestamp()) - minute(values["last_update"]) < filter_2["last_update"])      
 
+    query_filter = query_aux \
+        .withColumn("id", expr("uuid()")) \
+        .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
+        .writeStream \
+        .queryName("FilterQuery") \
+        .format("kafka") \
+        .outputMode("update") \
+        .option("checkpointLocation", "/tmp/spark/checkpoint2") \
+        .option("kafka.bootstrap.servers", kafka_route) \
+        .option("topic", "topic_filter") \
+        .start()
+    
+    """
     query = query_aux \
         .writeStream \
         .outputMode("update") \
         .format("console") \
         .start()
+    """
 
     spark.streams.awaitAnyTermination()
 
