@@ -25,6 +25,8 @@ def csv_to_json(csvFilePath):
 
 
 TOPIC_TEST = "topic_test"
+TOPIC_FILTER = "topic_filter"
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -92,6 +94,46 @@ def get_messages_test(arg):
             update_map(m)
 
     print('Parado Thread')
+
+def get_messages_filter(arg):
+    print('Iniciado Thread')
+    consumer = KafkaConsumer(
+        bootstrap_servers=[kafka_route],
+        auto_offset_reset='earliest',
+        enable_auto_commit=True,
+        group_id='my-group-id',
+        value_deserializer=lambda x: loads(x.decode('utf-8'))
+    )
+    consumer.subscribe(topics=[TOPIC_FILTER])
+    m = get_empty_map()
+    update_map(m)
+
+    timestamp = None
+
+    # Poll permite obtener los datos recibidos en los ultimos x segundos
+    t = threading.current_thread()
+    while getattr(t, "do_run", True):
+        seconds = 5
+        records = consumer.poll(seconds * 1000)
+
+        if records != {}:
+            record_list = []
+
+            for tp, consumer_records in records.items():
+                for consumer_record in consumer_records:
+                    print(consumer_record.value)
+                    record_list.append(consumer_record.value)
+
+            for item in record_list:
+                if timestamp != item['timestamp']:
+                    timestamp = item['timestamp']
+                    m = get_empty_map()
+                m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']} | Sentido: {item['sentido']} | Actualizacion: {item['last_update']}")
+
+            update_map(m)
+
+    print('Parado Thread')
+
 
 
 def mostrar_paradas(m):
@@ -208,16 +250,19 @@ def filter():
     # Filtrar el contenido de Kafka de acuerdo a los parametros recibidos
     # Mostrar la información obtenida en el mapa
 
-    linea = requests.args.get('linea', 1)
-    sentido = requests.args.get('sentido', 1)
-    last_time = requests.args.get('last-time')
+    global thread
+    if thread is not None:
+        thread.do_run = False
+        thread.join()
 
-    print(f"{linea} {sentido} {last_time}")
-    m = folium.Map(location=[36.7201600, -4.4203400], zoom_start=13)
+    thread = threading.Thread(target=get_messages_filter, args=("task",))
+    thread.daemon = True
+    thread.start()
+
     return render_template(
-        "index.html",
-        map=m._repr_html_()
+        "index.html"
     )
+
 
 
 if __name__ == '__main__':
