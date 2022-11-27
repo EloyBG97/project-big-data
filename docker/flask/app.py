@@ -26,6 +26,7 @@ def csv_to_json(csvFilePath):
 
 TOPIC_TEST = "topic_test"
 TOPIC_FILTER = "topic_filter"
+TOPIC_RADIO = "topic_radio"
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -157,6 +158,48 @@ def add_circle(m, location, text, color="blue"):
     ).add_to(m)
     return m
 
+def get_messages_radio(arg):
+    print('Iniciado Thread')
+    consumer = KafkaConsumer(
+        bootstrap_servers=[kafka_route],
+        auto_offset_reset='earliest',
+        enable_auto_commit=True,
+        group_id='my-group-id',
+        value_deserializer=lambda x: loads(x.decode('utf-8'))
+    )
+    consumer.subscribe(topics=[TOPIC_RADIO])
+    m = get_empty_map()
+    update_map(m)
+
+    timestamp = None
+
+    # Poll permite obtener los datos recibidos en los ultimos x segundos
+    t = threading.current_thread()
+    while getattr(t, "do_run", True):
+        seconds = 5
+        records = consumer.poll(seconds * 1000)
+
+        if records != {}:
+            record_list = []
+
+            for tp, consumer_records in records.items():
+                for consumer_record in consumer_records:
+                    print(consumer_record.value)
+                    record_list.append(consumer_record.value)
+
+            # from json file
+            folium.Circle([36.7201600, -4.4203100], radius=1500).add_to(m)
+            update_map(m)
+
+            for item in record_list:
+                if timestamp != item['timestamp']:
+                    timestamp = item['timestamp']
+                    m = get_empty_map()
+                m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']} | Sentido: {item['sentido']} | Actualizacion: {item['last_update']}")
+
+            update_map(m)
+
+    print('Parado Thread')
 
 def get_messages_ej4(arg):
     print('Iniciado Thread')
@@ -263,6 +306,24 @@ def filter():
         "index.html"
     )
 
+@app.route('/radio', methods=["GET"])
+def radio():
+    # [Irene] TODO: Desarrollar recurso /radio.
+    # Conectar con Kafka
+    # Mostrar los autobuses de servicio en un radio a partir de un punto dado
+
+    global thread
+    if thread is not None:
+        thread.do_run = False
+        thread.join()
+
+    thread = threading.Thread(target=get_messages_radio, args=("task",))
+    thread.daemon = True
+    thread.start()
+
+    return render_template(
+        "index.html"
+    )
 
 
 if __name__ == '__main__':

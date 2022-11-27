@@ -1,10 +1,12 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, FloatType
 from pyspark.sql.functions import expr, element_at, split, input_file_name, \
     countDistinct, col, udf, max, min, concat_ws, current_timestamp, minute
 import os
 from enum import Enum
 import json
+from geopy import distance
+from math import radians, cos, sin, asin, sqrt
 
 scala_version = '2.12'
 spark_version = '3.2.2'
@@ -15,6 +17,22 @@ packages = [
 data_route = os.environ.get('dataRoute')
 kafka_route = os.environ.get('kafkaRoute')
 
+
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance in kilometers between two points
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
+
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    r = 6371 # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
+    return c * r
 
 class ColumnName(Enum):
     COD_LINEA = "codLinea"
@@ -162,6 +180,32 @@ def main(directory) -> None:
         .option("checkpointLocation", "/tmp/spark/checkpoint2") \
         .option("kafka.bootstrap.servers", kafka_route) \
         .option("topic", "topic_filter") \
+        .start()
+
+    # Radio query
+    filter_3 = filters["3"]
+    q3 = lines
+
+    def get_distancia(lat, lon):
+        #return distance.distance((float(lat), float(lon)), (filter_3['latitude'], filter_3['longitude'])).km * 1000
+        return distance.distance((float(lat), float(lon)), (36.7201600, -4.4203100)).km * 1000
+
+    get_distancia_cols = udf(get_distancia, FloatType())
+    radio = 1500
+    values3 = values \
+        .withColumn("distancia", get_distancia_cols('lat', 'lon')) \
+        .filter(col("distancia") < radio)
+
+    query_radio = query_aux \
+        .withColumn("id", expr("uuid()")) \
+        .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
+        .writeStream \
+        .queryName("RadioQuery") \
+        .format("kafka") \
+        .outputMode("update") \
+        .option("checkpointLocation", "/tmp/spark/checkpoint3") \
+        .option("kafka.bootstrap.servers", kafka_route) \
+        .option("topic", "topic_radio") \
         .start()
     
     """
