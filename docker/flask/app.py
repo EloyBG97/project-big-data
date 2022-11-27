@@ -195,7 +195,7 @@ def get_messages_radio(arg):
                 if timestamp != item['timestamp']:
                     timestamp = item['timestamp']
                     m = get_empty_map()
-                m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']} | Sentido: {item['sentido']} | Actualizacion: {item['last_update']}")
+                m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']} | Sentido: {item['sentido']}")
 
             update_map(m)
 

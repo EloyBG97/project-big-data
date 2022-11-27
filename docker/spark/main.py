@@ -191,12 +191,11 @@ def main(directory) -> None:
         return distance.distance((float(lat), float(lon)), (36.7201600, -4.4203100)).km * 1000
 
     get_distancia_cols = udf(get_distancia, FloatType())
-    radio = 1500
-    values3 = values \
-        .withColumn("distancia", get_distancia_cols('lat', 'lon')) \
-        .filter(col("distancia") < radio)
+    radio = 50
+    values3 = q3.withColumn("distancia", get_distancia_cols('lat', 'lon')) \
+        .filter(col("distancia") < 1500)
 
-    query_radio = query_aux \
+    query_radio = q3 \
         .withColumn("id", expr("uuid()")) \
         .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
         .writeStream \
