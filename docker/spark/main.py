@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, TimestampType
-from pyspark.sql.functions import expr, element_at, split, input_file_name, current_timestamp, minute
+from pyspark.sql.functions import expr, element_at, split, input_file_name, current_timestamp, minute, collect_list
 import os
 import json
 
@@ -79,13 +79,15 @@ def main(directory) -> None:
     if("last_update" in filter_2.keys()): 
         query_aux = query_aux.filter(minute(current_timestamp()) - minute(values["last_update"]) < filter_2["last_update"])      
 
+    query_aux = query_aux.groupby(values.columns).agg(collect_list('codBus').alias('dummy')).drop('dummy')
+ 
     query_filter = query_aux \
         .withColumn("id", expr("uuid()")) \
         .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
         .writeStream \
         .queryName("FilterQuery") \
         .format("kafka") \
-        .outputMode("update") \
+        .outputMode("complete") \
         .option("checkpointLocation", "/tmp/spark/checkpoint2") \
         .option("kafka.bootstrap.servers", kafka_route) \
         .option("topic", "topic_filter") \

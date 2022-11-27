@@ -108,9 +108,6 @@ def get_messages_filter(arg):
                     record_list.append(consumer_record.value)
 
             for item in record_list:
-                if timestamp != item['timestamp']:
-                    timestamp = item['timestamp']
-                    m = get_empty_map()
                 m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']} | Sentido: {item['sentido']} | Actualizacion: {item['last_update']}")
 
             update_map(m)
