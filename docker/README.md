@@ -37,11 +37,11 @@ Para ejecutar spark mostrando por consola, comentamos la sección `depends_on`, 
 ```
 
 ```python
-    query = values \
-        .writeStream \
-        .outputMode("update") \
-        .format("console") \
-        .start()
+query = values \
+    .writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .start()
 ```
 
 ```sh
