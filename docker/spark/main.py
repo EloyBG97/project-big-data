@@ -194,10 +194,10 @@ def main(directory) -> None:
 
     get_distancia_cols = udf(get_distancia, FloatType())
     radio = filter_3["radio"]
-    values3 = q3.withColumn("distancia", get_distancia_cols('lat', 'lon')).filter(col("distancia")< radio)
+    values3 = q3.withColumn("distancia", get_distancia_cols('lat', 'lon')).filter(col("distancia") < radio)
 
 
-    query_radio = q3 \
+    query_radio = values3 \
         .withColumn("id", expr("uuid()")) \
         .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
         .writeStream \

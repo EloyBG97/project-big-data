@@ -185,14 +185,16 @@ def get_messages_radio(arg):
                     record_list.append(consumer_record.value)
 
             # from json file
-            folium.Circle([36.7201600, -4.4203100], radius=1500).add_to(m)
+            #folium.Circle([36.7201600, -4.4203100], radius=1500).add_to(m)
+            filters
+            folium.Circle([36.703817, -4.440802], radius=1500).add_to(m)
             update_map(m)
 
             for item in record_list:
                 if timestamp != item['timestamp']:
                     timestamp = item['timestamp']
                     m = get_empty_map()
-                m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Linea: {item['codLinea']} | Sentido: {item['sentido']}")
+                m = add_marker(m, [item['lat'], item['lon']], f"Bus:{item['codBus']} | Lineaa: {item['codLinea']} | Sentido: {item['sentido']}")
 
             update_map(m)
 
