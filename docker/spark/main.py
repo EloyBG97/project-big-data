@@ -189,13 +189,13 @@ def main(directory) -> None:
     q3 = lines
 
     def get_distancia(lat, lon):
-        #return distance.distance((float(lat), float(lon)), (filter_3['latitude'], filter_3['longitude'])).km * 1000
-        return distance.distance((float(lat), float(lon)), (36.7201600, -4.4203100)).km * 1000
+        return distance.distance((float(lat), float(lon)), (filter_3['latitude'], filter_3['longitude'])).km * 1000
+        #return distance.distance((float(lat), float(lon)), (36.7201600, -4.4203100)).km * 1000
 
     get_distancia_cols = udf(get_distancia, FloatType())
-    radio = 50
-    values3 = q3.withColumn("distancia", get_distancia_cols('lat', 'lon')) \
-        .filter(col("distancia") < 1500)
+    radio = filter_3["radio"]
+    values3 = q3.withColumn("distancia", get_distancia_cols('lat', 'lon')).filter(col("distancia")< radio)
+
 
     query_radio = q3 \
         .withColumn("id", expr("uuid()")) \
