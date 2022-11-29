@@ -8,8 +8,10 @@ services:
       - "5000:5000"
     volumes:
       - ./flask:/code
+      - ./spark/config.json:/config.json
     depends_on:
       - kafka
+      - spark
     environment:
       - FLASK_ENV=development
       - PYTHONUNBUFFERED=1 # Mostrar los prints bien
@@ -22,8 +24,8 @@ services:
       - ./datos-abiertos/data/:/code/data
     depends_on:
       - kafka
+      - datos-abiertos
     environment:
-      - dataRoute=../datos-abiertos/data/
       - kafkaRoute=localhost:9092
     network_mode: host
 

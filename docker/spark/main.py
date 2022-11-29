@@ -1,12 +1,11 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, FloatType
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType
 from pyspark.sql.functions import expr, element_at, split, input_file_name, \
-    countDistinct, col, udf, max, min, concat_ws, current_timestamp, minute, collect_list
+    countDistinct, col, udf, max, min, concat_ws, current_timestamp, to_timestamp, collect_list, unix_timestamp, round
 import os
 from enum import Enum
 import json
 from geopy import distance
-from math import radians, cos, sin, asin, sqrt
 
 scala_version = '2.12'
 spark_version = '3.2.2'
@@ -14,25 +13,7 @@ packages = [
     f'org.apache.spark:spark-sql-kafka-0-10_{scala_version}:{spark_version}',
     'org.apache.kafka:kafka-clients:3.2.2'
 ]
-data_route = os.environ.get('dataRoute')
 kafka_route = os.environ.get('kafkaRoute')
-
-
-def haversine(lon1, lat1, lon2, lat2):
-    """
-    Calculate the great circle distance in kilometers between two points
-    on the earth (specified in decimal degrees)
-    """
-    # convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
-
-    # haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a))
-    r = 6371 # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
-    return c * r
 
 class ColumnName(Enum):
     COD_LINEA = "codLinea"
@@ -41,16 +22,15 @@ class ColumnName(Enum):
     COD_PARADA = "codParada"
     ORDEN = "orden"
 
-
-def obtener_paradas(values, spark):
+def obtener_paradas(values, spark, filter_4):
     df = spark \
         .read \
         .options(header='true', inferschema='true') \
         .option("delimiter", ",") \
         .csv("lineasyparadas.csv")
 
-    parada1 = "1555"
-    parada2 = "1556"
+    parada1 = filter_4['paradaInicio']
+    parada2 = filter_4['paradaFin']
     lista = [parada1, parada2]
 
     # Obtener las lineas que pasan por las dos paradas
@@ -112,6 +92,36 @@ def obtener_paradas(values, spark):
     return values.filter(values.codLinea.isin(array_lineas)) \
         .withColumn("distanciaParadas", get_distancia_paradas_cols('codParIni', 'codLinea'))
 
+def filtro_radio(values, filter_3):
+    # Radio query
+    def get_distancia(lat, lon):
+        return distance.distance((float(lat), float(lon)), (filter_3['latitude'], filter_3['longitude'])).km * 1000
+
+    get_distancia_cols = udf(get_distancia, FloatType())
+    return values.withColumn("distancia", get_distancia_cols('lat', 'lon')).filter(col("distancia") < filter_3["radio"])
+
+
+def filtro_minutos(values, filter_2):
+    # Filtering Query    
+    query_aux = values
+    
+    if("codLinea" in filter_2.keys()):
+        query_aux = query_aux.filter(values["codLinea"] == filter_2["codLinea"])
+
+    if("sentido" in filter_2.keys()):
+        query_aux = query_aux.filter(values["sentido"] == filter_2["sentido"])
+
+    if("last_update" in filter_2.keys()): 
+        df_minutes = query_aux.withColumn('from_timestamp', to_timestamp(col('last_update'), "yyyy-MM-dd HH:mm:ss")) \
+        .withColumn('end_timestamp', current_timestamp()) \
+        .withColumn('DiffInSeconds', unix_timestamp("end_timestamp") - unix_timestamp('from_timestamp')) \
+        .withColumn('DiffInMinutes', round(col('DiffInSeconds') / 60))
+
+        query_aux = df_minutes.filter(col('DiffInMinutes') <= int(filter_2["last_update"]))\
+            .drop('end_timestamp').drop('end_timestamp').drop('DiffInSeconds').drop('DiffInMinutes')
+        
+    return query_aux.groupby(values.columns).agg(collect_list('codBus').alias('dummy')).drop('dummy')
+
 def main(directory) -> None:
     with open("config.json", 'r') as f:
         filters = json.load(f)
@@ -130,10 +140,9 @@ def main(directory) -> None:
         StructField("lon", StringType(), True),
         StructField("lat", StringType(), True),
         StructField("codParIni", StringType(), True),
-        StructField("last_update", TimestampType(), True)
+        StructField("last_update", StringType(), True)
     ]
 
-    # Create DataFrame representing the stream of input lines from connection to localhost:9999
     lines = spark \
         .readStream \
         .format("csv") \
@@ -145,7 +154,6 @@ def main(directory) -> None:
 
     values = lines
     
-    # Start running the query that prints the output in the screen
     query1 = values \
         .withColumn("id", expr("uuid()")) \
         .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
@@ -154,23 +162,10 @@ def main(directory) -> None:
         .outputMode("update") \
         .option("checkpointLocation", "/tmp/spark/checkpoint") \
         .option("kafka.bootstrap.servers", kafka_route) \
-        .option("topic", "topic_test") \
+        .option("topic", "topic_all") \
         .start()
-
-    # Filtering Query    
-    filter_2 = filters["2"]
-    query_aux = lines
     
-    if("codLinea" in filter_2.keys()):
-        query_aux = query_aux.filter(values["codLinea"] == filter_2["codLinea"])
-
-    if("sentido" in filter_2.keys()):
-        query_aux = query_aux.filter(values["sentido"] == filter_2["sentido"])
-
-    if("last_update" in filter_2.keys()): 
-        query_aux = query_aux.filter(minute(current_timestamp()) - minute(values["last_update"]) < filter_2["last_update"])      
-
-    query_aux = query_aux.groupby(values.columns).agg(collect_list('codBus').alias('dummy')).drop('dummy')
+    query_aux = filtro_minutos(values, filters["2"])
  
     query_filter = query_aux \
         .withColumn("id", expr("uuid()")) \
@@ -184,18 +179,7 @@ def main(directory) -> None:
         .option("topic", "topic_filter") \
         .start()
 
-    # Radio query
-    filter_3 = filters["3"]
-    q3 = lines
-
-    def get_distancia(lat, lon):
-        return distance.distance((float(lat), float(lon)), (filter_3['latitude'], filter_3['longitude'])).km * 1000
-        #return distance.distance((float(lat), float(lon)), (36.7201600, -4.4203100)).km * 1000
-
-    get_distancia_cols = udf(get_distancia, FloatType())
-    radio = filter_3["radio"]
-    values3 = q3.withColumn("distancia", get_distancia_cols('lat', 'lon')).filter(col("distancia") < radio)
-
+    values3 = filtro_radio(values, filters["3"])
 
     query_radio = values3 \
         .withColumn("id", expr("uuid()")) \
@@ -208,16 +192,8 @@ def main(directory) -> None:
         .option("kafka.bootstrap.servers", kafka_route) \
         .option("topic", "topic_radio") \
         .start()
-    
-    """
-    query = query_aux \
-        .writeStream \
-        .outputMode("update") \
-        .format("console") \
-        .start()
-    """
 
-    values4 = obtener_paradas(values, spark)
+    values4 = obtener_paradas(values, spark, filters["4"])
 
     query4 = values4 \
         .withColumn("id", expr("uuid()")) \
