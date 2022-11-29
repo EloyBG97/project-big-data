@@ -86,6 +86,7 @@ def get_messages_all(arg):
 
             for tp, consumer_records in records.items():
                 for consumer_record in consumer_records:
+                    print(consumer_record.value)
                     record_list.append(consumer_record.value)
 
             for item in record_list:
@@ -98,26 +99,12 @@ def get_messages_all(arg):
 
     print('Parado Thread')
 
+
 marker_colors = [
-    'red',
-    'blue',
-    'gray',
-    'darkred',
-    'lightred',
-    'orange',
-    'beige',
-    'green',
-    'darkgreen',
-    'lightgreen',
-    'darkblue',
-    'lightblue',
-    'purple',
-    'darkpurple',
-    'pink',
-    'cadetblue',
-    'lightgray',
-    'black'
+    'lightblue', 'white', 'pink', 'lightgreen', 'red', 'darkpurple', 'purple', 'lightred', 'darkblue', 'orange',
+    'darkred', 'darkgreen', 'cadetblue', 'gray', 'blue', 'beige', 'black', 'green', 'lightgray'
 ]
+
 
 def get_messages_filter(arg):
     print('Iniciado Thread')
@@ -148,7 +135,7 @@ def get_messages_filter(arg):
             for item in record_list:
                 m = add_marker(m, [item['lat'], item['lon']],
                                f"Bus:{item['codBus']} | Linea: {item['codLinea']} | Sentido: {item['sentido']} | Actualizacion: {item['last_update']}",
-                               color=marker_colors[int(item['codBus'])%len(marker_colors)])
+                               color=marker_colors[int(item['codBus']) % len(marker_colors)])
 
             update_map(m)
 
@@ -244,6 +231,11 @@ def get_messages_ej4(arg):
     distanciaMinima = float('inf')
     listado = []
 
+    marker_colors = [
+        'lightblue', 'white', 'pink', 'lightgreen', 'darkpurple', 'purple', 'darkblue',
+        'darkgreen', 'cadetblue', 'gray', 'blue', 'beige', 'black', 'green', 'lightgray'
+    ]
+
     # Poll permite obtener los datos recibidos en los ultimos x segundos
     t = threading.current_thread()
     while getattr(t, "do_run", True):
@@ -269,7 +261,8 @@ def get_messages_ej4(arg):
                 if distanciaMinima > item['distanciaParadas']:
                     distanciaMinima = item['distanciaParadas']
                 for bus in listado:
-                    color = "red" if distanciaMinima == bus['distanciaParadas'] else "blue"
+                    color = "red" if distanciaMinima == bus['distanciaParadas'] else marker_colors[
+                        int(float(bus['codLinea'])) % len(marker_colors)]
                     m = add_marker(m, [bus['lat'], bus['lon']],
                                    f"Bus:{bus['codBus']} | Linea: {bus['codLinea']} | Paradas restantes: {bus['distanciaParadas']}",
                                    color=color)

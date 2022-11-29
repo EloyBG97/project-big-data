@@ -153,8 +153,11 @@ def main(directory) -> None:
         .withColumn("timestamp", element_at(split("filename", ".txt"), 1))
 
     values = lines
+
+    values1 = values\
+        .drop(*("codParIni","last_update","filename"))
     
-    query1 = values \
+    query1 = values1 \
         .withColumn("id", expr("uuid()")) \
         .selectExpr("CAST(id AS STRING) AS key", "to_json(struct(*)) AS value") \
         .writeStream \
